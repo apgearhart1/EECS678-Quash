@@ -26,29 +26,71 @@ static char *env;
 static char *dir;
 static char *curAction;
 static struct Job jobs[100];
-char *clearWhitespace(char *str)
-{
+
+char *clearWhitespace(char *str){
     char *end;
 
-    while (isspace(*str))
+    while (isspace(*str)){
         str++;
-    if (*str == 0)
+    }
+    if (*str == 0){
         return str;
+    }
     end = str + strlen(str) - 1;
-    while (end > str && isspace(*end))
+    while (end > str && isspace(*end)){
         end--;
+    }
     *(end + 1) = 0;
-
     return str;
 }
 
+void changeDirectory(char *p){
+    if (p == NULL){
+        chdir(getenv("HOME"));
+        dir = getcwd(NULL, 1024);
+    }
+    else{
+        if (chdir(p) == -1){
+            printf(" %s: No such file or directory\n", strerror(errno));
+        }
+        dir = getcwd(NULL, 1024);
+    }
+}
+
+void ex(char **args){
+    pid_t p = fork();
+    int stat;
+    if (p==0){
+        if(strlen(args[0]) > 0){
+            if (execvp(args[0], args) < 0){
+                fprintf(stderr, "Invalid action\n");
+                exit(0);
+            }
+        }
+        else{
+            if (execvp(args[0], args) < 0){
+                fprintf(stderr, "Invalid action\n");
+                exit(0);
+            }
+        }
+    }
+    else{
+        waitpid(p, &stat, 0);
+        if (stat == 1){
+            fprintf(stderr, "%s\n", "Status == 1\n");
+        }
+    }
+}
+
 void createPipe(){
+    char *part = strtok(curAction, "|\0");
+    char *command = part;
+    part = strtok(NULL, "\0");
     int pipefd[2];
     pid_t pid, pid2;
     pipe(pipefd);
     pid = fork();
-    if (pid == 0)
-    {   
+    if (pid == 0){
         dup2(pipefd[1], STDOUT_FILENO);
         clearWhitespace(command);
         close(pipefd[0]);
@@ -69,21 +111,18 @@ void createPipe(){
 
 void performAction()
 {
-    // char *command;
-    // char *args[20];
-    // for (int i = 0; i < 20; i++)
-    // {
-    //     args[i] = NULL;
-    // }
-    // int numArgs = 0;
-    // char *input = strdup(curAction);
-    // command = strtok(curAction, " ");
-    // while (command != NULL)
-    // {
-    //     args[numArgs] = command;
-    //     command = strtok(NULL, " ");
-    //     numArgs++;
-    // }
+    char *command;
+    char *args[20];
+    for (int i = 0; i < 20; i++){
+        args[i] = NULL;
+    }
+    int numArgs = 0;
+    char *input = strdup(curAction);
+    command = strtok(curAction, " ");
+    while (command != NULL){
+        args[numArgs++] = command;
+        command = strtok(NULL, " ");
+    }
     // char *Args[19];
     // for (int i = 0; i < 19; i++)
     // {
@@ -97,10 +136,9 @@ void performAction()
     //     }
     // }
 
-    // if (strcmp("cd", args[0]) == 0)//CD
-    // {
-    //     cd(args[1]);
-    // }
+     if (strcmp("cd", args[0]) == 0){
+         changeDirectory(args[1]);
+     }
     // else if (strcmp(args[0], "set") == 0)// Set Path
     // {
     //     setPath(args[1]);
@@ -132,10 +170,9 @@ void performAction()
     // {
     //     fileOUT(args);
     // }
-    // else//Run executables
-    // {
-    //     execute(args);
-    // }
+     else{
+         ex(args);
+     }
 }
 
 
@@ -146,29 +183,22 @@ int main(int argc, char *argv[]){
     dir = getcwd(NULL, 1024);
     numJobs = 0;
 
-    while (1)
-    {
+    while (1){
         snprintf(prompt, sizeof(prompt), "%s:%s> ", env, dir);
         action = readline(prompt);
-        
         action = clearWhitespace(action);
-        if (strcmp("exit", action) != 0 && strcmp("quit", action) != 0)
-        {
-            if (strlen(action) > 1)
-            {
+        if (strcmp("exit", action) != 0 && strcmp("quit", action) != 0){
+            if (strlen(action) > 1){
                 action = clearWhitespace(action);
                 curAction = action;
                 performAction();
             }
         }
-        else
-        {
+        else{
             break;
         }
         free(action);
     }
 
     return 0;
-    
-    
 }
