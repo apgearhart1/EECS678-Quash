@@ -108,14 +108,19 @@ void createPipe(){
     
 }
 
+int sPath(char *action){
+    char *pt = strtok(action, "=");
+    char *path = strtok(NULL, "\0");
+    if ((setenv(pt, path, 1)) == -1){
+        printf("%s wasn't set correctly.\n", pt);
+    }
+    return 1;
+}
 
-void performAction()
-{
+void performAction(){
     char *command;
     char *args[20];
-    for (int i = 0; i < 20; i++){
-        args[i] = NULL;
-    }
+    for (int i = 0; i < 20; i++){ args[i] = NULL; }
     int numArgs = 0;
     char *input = strdup(curAction);
     command = strtok(curAction, " ");
@@ -123,26 +128,13 @@ void performAction()
         args[numArgs++] = command;
         command = strtok(NULL, " ");
     }
-    // char *Args[19];
-    // for (int i = 0; i < 19; i++)
-    // {
-    //     Args[i] = NULL;
-    // }
-    // for (int i = 1; i < 20; i++)
-    // {
-    //     if (args[i] != NULL)
-    //     {
-    //         Args[i - 1] = args[i];
-    //     }
-    // }
 
-     if (strcmp("cd", args[0]) == 0){
-         changeDirectory(args[1]);
-     }
-    // else if (strcmp(args[0], "set") == 0)// Set Path
-    // {
-    //     setPath(args[1]);
-    // }
+    if (strcmp("cd", args[0]) == 0){
+        changeDirectory(args[1]);
+    }
+    else if (strcmp(args[0], "set") == 0){
+        sPath(args[1]);
+    }
     // else if (strcmp(args[0], "jobs") == 0)//Show all jobs
     // {
     //     showJobs();
