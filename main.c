@@ -44,32 +44,7 @@ char *clearWhitespace(char *str){
     return str;
 }
 void performAction();
-void out(char *args){
-    int index;
-    int out;
-    int pos = 0;
-    while(pos == 0){
-        if(args[index] == ">"){
-            pos = index;
-        }
-        index++;
-    }
-    int s = 0;
-    pid_t pid;
-    pid = fork();
-    if(pid == 0){
-        char* name = args[pos + 1];
-        out = open(name, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
-        dup2(out, STDOUT_FILENO);
-        char* in = strtok(current, ">");
-        performAction();
-        close(out);
-        exit(0);
-    }else{
-        wait(NULL);
 
-    }
-}
 void ex(char **args){
     pid_t p = fork();
     int stat;
@@ -94,52 +69,58 @@ void ex(char **args){
         }
     }
 }
-void in(char* args){
-    char* cmd = NULL;
-    int length = 0;
-    ssize_t read = 0;
-    FILE* fd;
-    pid_t pid = fork();
-    if (args[0] == "quash"){
-        fd = fopen(args[2], "r");
-        do{
-            read = getline(&cmd, &length, fd);
-            if (pid == 0){
-                performAction();
-            }else{
-                wait(NULL);
-            }
-            
-        } while (read!=-1);
-        fclose(fd);
 
-    }else{
-        int counter = 0;
-        fd = fopen(args[2], "r");
-        int index = 0;
-        while (index == 0){
-            if(args[index] == "<"){
-                index = counter;
-            }
-            counter++;
+void in(char* args){
+    FILE* fp;
+    int s;
+    char* line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    char *n[4];
+    n[0] = "sh";
+    n[1] = "-c";
+    n[2] = "";
+    n[3] = NULL;
+    fp = fopen(args, "r");
+    if (fp == NULL){ fprintf(stderr, "%s\n", "Status == 1\n"); }
+    while ((read = getline(&line, &len, fp)) != -1) {
+        pid_t pid = fork();
+        if (pid==0){
+            n[2] = line;
+            execvp("/bin/sh", n);
         }
-        while((getline(&cmd, &length, fd) < -1)){
-            char* t = strtok(cmd, "\0");
-            args[index] = t;
-            counter++;
-            printf("%s\n", args[index]);
-        }
-        if (pid == 0)
-        {
-            ex(args);
-        }else{
-            wait(NULL);
+        else{
+            waitpid(pid, &s, 0);
         }
     }
-    
-    
+    fclose(fp);
+    if (line){ free(line); }
 }
 
+int fileExists(const char* path){
+    FILE *fptr = fopen(path, "r");
+    if (fptr == NULL){ return 0; }
+    fclose(fptr);
+    return 1;
+}
+
+void out(char *args){
+    FILE* fp;
+    long size;
+    char *buf;
+    char *ptr;
+    char input[150];
+    size = pathconf(".", _PC_PATH_MAX);
+    if ((buf = (char *)malloc((size_t)size)) != NULL){
+        ptr = getcwd(buf, (size_t)size);
+        fp = fopen(args, "a");
+        printf("%s: ", "What do you want to input");
+        fgets(input, 150, stdin);
+        fprintf(fp, "%s\n", input);
+        fclose(fp);
+        printf("\n%s %s\n\n", "Edited", args);
+    }
+}
 
 void killProcess(char* args){
     int pid = (int) strtol(args[2], NULL, 0);
@@ -195,7 +176,6 @@ void viewProcess(){
             printf("\n");
         }
     }
-
 }
 
 
@@ -222,7 +202,8 @@ void createPipe(){
     pid = fork();
     if (pid == 0){
         dup2(pipefd[1], STDOUT_FILENO);
-        clearWhitespace(command);
+        current = clearWhitespace(command);
+        performAction();
         close(pipefd[0]);
         close(pipefd[1]);
         exit(NULL);
@@ -230,12 +211,12 @@ void createPipe(){
     pid2 = fork();
     if(pid2 == 0){
         dup2(pipefd[0], STDOUT_FILENO);
-        clearWhitespace(command);
+        current = clearWhitespace(command);
+        performAction();
         close(pipefd[0]);
         close(pipefd[1]);
         exit(NULL);
     }
-    
 }
 
 int sPath(char *action){
@@ -278,10 +259,10 @@ void performAction(){
         viewJobs();
     }
     else if (strchr(input, '<') != NULL){
-        in(args);
+        in(args[1]);
     }
     else if (strchr(input, '>') != NULL){
-        out(args);
+        out(args[1]);
     }
     else{
         ex(args);
