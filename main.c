@@ -70,31 +70,34 @@ void ex(char **args){
     }
 }
 
-void in(char* args){
-    FILE* fp;
-    int s;
-    char* line = NULL;
-    size_t len = 0;
-    ssize_t read;
-    char *n[4];
-    n[0] = "sh";
-    n[1] = "-c";
-    n[2] = "";
-    n[3] = NULL;
-    fp = fopen(args, "r");
-    if (fp == NULL){ fprintf(stderr, "%s\n", "Status == 1\n"); }
-    while ((read = getline(&line, &len, fp)) != -1) {
-        pid_t pid = fork();
-        if (pid==0){
-            n[2] = line;
-            execvp("/bin/sh", n);
+void in(char* args, char *phrase){
+    if (strcmp(phrase, "quash") == 0){
+        FILE* fp;
+        int s;
+        char* line = NULL;
+        size_t len = 0;
+        ssize_t read;
+        char *n[4];
+        n[0] = "sh";
+        n[1] = "-c";
+        n[2] = "";
+        n[3] = NULL;
+        fp = fopen(args, "r");
+        if (fp == NULL){ fprintf(stderr, "%s\n", "Status == 1\n"); }
+        while ((read = getline(&line, &len, fp)) != -1) {
+            pid_t pid = fork();
+            if (pid==0){
+                n[2] = line;
+                execvp("/bin/sh", n);
+            }
+            else{
+                waitpid(pid, &s, 0);
+            }
         }
-        else{
-            waitpid(pid, &s, 0);
-        }
+        fclose(fp);
+        if (line){ free(line); }
     }
-    fclose(fp);
-    if (line){ free(line); }
+    else{ printf("%s\n", "Error"); }
 }
 
 int fileExists(const char* path){
@@ -104,22 +107,25 @@ int fileExists(const char* path){
     return 1;
 }
 
-void out(char *args){
-    FILE* fp;
-    long size;
-    char *buf;
-    char *ptr;
-    char input[150];
-    size = pathconf(".", _PC_PATH_MAX);
-    if ((buf = (char *)malloc((size_t)size)) != NULL){
-        ptr = getcwd(buf, (size_t)size);
-        fp = fopen(args, "a");
-        printf("%s: ", "What do you want to input");
-        fgets(input, 150, stdin);
-        fprintf(fp, "%s\n", input);
-        fclose(fp);
-        printf("\n%s %s\n\n", "Edited", args);
+void out(char *args, char *phrase){
+    if (strcmp(phrase, "quash") == 0){
+        FILE* fp;
+        long size;
+        char *buf;
+        char *ptr;
+        char input[150];
+        size = pathconf(".", _PC_PATH_MAX);
+        if ((buf = (char *)malloc((size_t)size)) != NULL){
+            ptr = getcwd(buf, (size_t)size);
+            fp = fopen(args, "a");
+            printf("%s: ", "What do you want to input");
+            fgets(input, 150, stdin);
+            fprintf(fp, "%s\n", input);
+            fclose(fp);
+            printf("\n%s %s\n\n", "Edited", args);
+        }
     }
+    else{ printf("%s\n", "Error"); }
 }
 
 void killProcess(char* args){
@@ -259,10 +265,10 @@ void performAction(){
         viewJobs();
     }
     else if (strchr(input, '<') != NULL){
-        in(args[1]);
+        in(args[2], args[0]);
     }
     else if (strchr(input, '>') != NULL){
-        out(args[1]);
+        out(args[2], args[0]);
     }
     else{
         ex(args);
