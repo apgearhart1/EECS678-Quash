@@ -27,7 +27,7 @@ static char *dir;
 static char *current;
 static struct Job jobs[100];
 
-char *clearWhitespace(char *str){
+char *remSpace(char *str){
     char *end;
 
     while (isspace(*str)){
@@ -208,7 +208,7 @@ void createPipe(){
     pid = fork();
     if (pid == 0){
         dup2(pipefd[1], STDOUT_FILENO);
-        current = clearWhitespace(command);
+        current = remSpace(command);
         performAction();
         close(pipefd[0]);
         close(pipefd[1]);
@@ -217,7 +217,7 @@ void createPipe(){
     pid2 = fork();
     if(pid2 == 0){
         dup2(pipefd[0], STDOUT_FILENO);
-        current = clearWhitespace(command);
+        current = remSpace(command);
         performAction();
         close(pipefd[0]);
         close(pipefd[1]);
@@ -286,10 +286,10 @@ int main(int argc, char *argv[]){
     while (1){
         snprintf(prompt, sizeof(prompt), "%s:%s> ", env, dir);
         action = readline(prompt);
-        action = clearWhitespace(action);
+        action = remSpace(action);
         if (strcmp("exit", action) != 0 && strcmp("quit", action) != 0){
             if (strlen(action) > 1){
-                action = clearWhitespace(action);
+                action = remSpace(action);
                 current = action;
                 performAction();
             }
